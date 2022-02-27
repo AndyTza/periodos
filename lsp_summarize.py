@@ -358,3 +358,6 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
 
 def main():
     calc_all_lsp(100, transient_class='rrl', k_max_comp=7)
+
+if __name__ == "__main__":
+    main()
