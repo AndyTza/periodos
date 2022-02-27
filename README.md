@@ -1,2 +1,6 @@
-# periodos
-Period Finding Analysis in the era of the Vera Rubin Observatory
+# Periodos (περίοδος) 
+Analysis on period finding in the era of the Vera C. Rubin Observatory.
+
+
+
+
