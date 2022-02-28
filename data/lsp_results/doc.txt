@@ -1,0 +1,3 @@
+### Documentation on data ###
+
+*_master_N100 tables: Contain 100 injected light curves at search period .1 days to 150 days (or MAX(dt)-5)

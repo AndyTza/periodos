@@ -344,7 +344,7 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
         
         master_var_col = np.concatenate([[_id_unq[i]], [ndet[i]], [ptrue[i]], 
                                         M_LSP_F, M_LSP_G,
-                                         S_LSP_U, S_LSP_G, S_LSP_R, S_LSP_I, S_LSP_Z, S_LSP_Y,
+                                    g     S_LSP_U, S_LSP_G, S_LSP_R, S_LSP_I, S_LSP_Z, S_LSP_Y,
                                         S_LSP_fast])
         
         Table_master.add_row(master_var_col)
