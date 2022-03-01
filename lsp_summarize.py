@@ -271,7 +271,7 @@ def generate_tags(kmax):
     
     return master_names
 
-def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
+def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, fmin=0.1, fmax=150, table=toi_table):
     """DOCS
     
     Will return a master table (ascii.Table) of both General & Fast LSP (single & multi)
@@ -308,12 +308,12 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
         
         for j in range(k_max_comp):
             # multi-LSP
-            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast')
-            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general')
+            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast', fmin=fmin, fmax=fmax)
+            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general', fmin=fmin, fmax=fmax)
             
             for ii, flt_lst in enumerate(list('ugrizy')):
                 # Single-band lsp per band
-                X_g_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, k=j, mode='general') # general
+                X_g_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, k=j, mode='general', fmin=fmin, fmax=fmax) # general
                 M_single_general[i, j, ii] = X_g_lsp # append data
                 
             M_multi_fast[i, j]=m_f_lsp
@@ -321,7 +321,7 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
         
         # fast single_lsp
         for ii, flt_lst in enumerate(list('ugrizy')):
-            X_f_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, mode='fast') # general
+            X_f_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, mode='fast', fmin=fmin, fmax=fmax) # general
             M_single_fast[i, ii] = X_f_lsp
 
         if transient_class=='rrl' or transient_class=='eb':
@@ -368,7 +368,7 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
             
 
 def main(Ninj, clf_type, Kmax, Pmin, Pmax, baseline_dur=365):
-    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, )
+    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, fmin=Pmin, fmax=Pmax, dur=baseline_dur)
 
 if __name__ == "__main__":
     main(args.NumberInjected, args.classType, args.MaximumFourierComponents, args.MinSearchPeriod, args.MaxSearchPeriod, args.duration)
