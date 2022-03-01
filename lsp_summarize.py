@@ -22,6 +22,17 @@ import warnings
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
+import argparse
+
+parser = argparse.ArgumentParser(description="LSP Summarize Arguments")
+parser.add_argument('-N', '--NumberInjected', type=str, help='Number of injected light curves (int)')
+parser.add_argument('-class', '--classType', type=str, help='Class type. Currently supports rrl, eb, agn, tde')
+parser.add_argument('-kmax', '--MaximumFourierComponents', type=str, help='Maximum number of fourier components (>1)')
+parser.add_argument('-fmin', '--MinSearchPeriod', type=str, help='Minimum search period')
+parser.add_argument('-fmax', '--MaxSearchPeriod', type=str, help='Maximum search period')
+parser.add_argument('-dur', '--duration', type=str, help='Baseline duration (default 365 days)')
+
+args = parser.parse_args()
 
 def generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL, meta_theta_AGN, meta_theta_TDE):
     """
@@ -356,8 +367,8 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, table=toi_table):
     return Table_master
             
 
-def main():
-    calc_all_lsp(100, transient_class='rrl', k_max_comp=7)
+def main(Ninj, clf_type, Kmax, Pmin, Pmax, baseline_dur=365):
+    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, )
 
 if __name__ == "__main__":
-    main()
+    main(args.NumberInjected, args.classType, args.MaximumFourierComponents, args.MinSearchPeriod, args.MaxSearchPeriod, args.duration)
