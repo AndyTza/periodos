@@ -28,26 +28,25 @@ parser = argparse.ArgumentParser(description="LSP Summarize Arguments")
 parser.add_argument('-N', '--NumberInjected', type=str, help='Number of injected light curves (int)')
 parser.add_argument('-class', '--classType', type=str, help='Class type. Currently supports rrl, eb, agn, tde')
 parser.add_argument('-kmax', '--MaximumFourierComponents', type=str, help='Maximum number of fourier components (>1)')
+parser.add_argument('-k_term_base', '--FreqTermsBaseAll', type=str, help='Number of frequency terms to use for the base model common to all bands')
 parser.add_argument('-fmin', '--MinSearchPeriod', type=str, help='Minimum search period')
 parser.add_argument('-fmax', '--MaxSearchPeriod', type=str, help='Maximum search period')
 parser.add_argument('-dur', '--duration', type=str, help='Baseline duration (default 365 days)')
 
 args = parser.parse_args()
 
-def generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL, meta_theta_AGN, meta_theta_TDE):
+def generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL):
     """
-    Generate TOI table with all the classes and light curve ID's.
-    
-    
-    
-    TODO: Need to fix documentation here and add flexibility for other models
-    
-    
+    Generate table that contains the light curve ID and transient type. 
+
+    Input
+    -----
+    data: Head data table that contains photometry
+    meta_info: Table that contains the meta-data (i.e classification name)
+    meta_theta_<TYPE>: Table that contains metadata information (i.e Period)
     
     """
     id_av_rrl, id_av_eb = [], []
-    id_av_agn = []
-    id_av_tde = []
 
     for uid in tqdm(np.unique(data['object_id'])):
         ww = np.where(meta_theta_EB['object_id'] == uid)
@@ -59,36 +58,19 @@ def generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL, meta_thet
         if np.shape(ww)[-1]==1:
             id_av_rrl.append(uid)
 
-    for uid in tqdm(np.unique(data['object_id'])):
-        ww = np.where(meta_theta_AGN['object_id'] == uid)
-        if np.shape(ww)[-1]==1:
-            id_av_agn.append(uid)
-
-    for uid in tqdm(np.unique(data['object_id'])):
-        ww = np.where(meta_theta_TDE['object_id'] == uid)
-        if np.shape(ww)[-1]==1:
-            id_av_tde.append(uid)
-
-    id_av_rrl, id_av_eb, id_av_agn = np.array(id_av_rrl), np.array(id_av_eb), np.array(id_av_agn)
-    id_av_tde = np.array(id_av_tde)
+    id_av_rrl, id_av_eb = np.array(id_av_rrl), np.array(id_av_eb)
 
     _id1 = np.array(['rrl' for _ in range(len(id_av_rrl))])
     _id2 = np.array(['eb' for _ in range(len(id_av_eb))])
-    _id3 = np.array(['agn' for _ in range(len(id_av_agn))])
-    _id4 = np.array(['tde' for _ in range(len(id_av_tde))])
-
-
 
     # All ID's and & ID tags
-    all_id = np.concatenate([id_av_rrl, id_av_eb, id_av_agn, id_av_tde])
-    _id_all = np.concatenate([_id1, _id2, _id3, _id4])
+    all_id = np.concatenate([id_av_rrl, id_av_eb])
+    _id_all = np.concatenate([_id1, _id2])
 
     # Final TOI table
     toi_table = Table([all_id, _id_all], names=('obj_id', 'type'))
 
     return toi_table
-
-
 
 
 
@@ -100,11 +82,9 @@ data = pd.read_csv(data_path + "plasticc_train_lightcurves.csv.gz",
 meta_info = ascii.read(data_path + "plasticc_train_metadata.csv") # ascii meta since it's smaller
 meta_theta_EB = ascii.read(data_path + 'plasticc_modelpar/' + 'plasticc_modelpar_016_EB.csv')
 meta_theta_RRL = ascii.read(data_path + 'plasticc_modelpar/' + 'plasticc_modelpar_092_RRL.csv')
-meta_theta_AGN = ascii.read(data_path + "plasticc_modelpar/" + "plasticc_modelpar_088_AGN.csv")
-meta_theta_TDE = ascii.read(data_path + "plasticc_modelpar/" +"plasticc_modelpar_015_TDE.csv")
 
 # Fetch all toi's
-toi_table = generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL, meta_theta_AGN, meta_theta_TDE)
+toi_table = generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL)
 
 # Helper functions to read and digest plasticc data
 
@@ -123,9 +103,8 @@ def generate_lc(obj_id, band='all', data_table=data, det=1):
     # Select light curve based on the ID 
     lc = data_table_mod[data_table_mod['object_id']==obj_id]
     
-    if len(lc)==0:
-        print ("Sorry, it seems like your obj_id query was wrong!")
-        return False
+    # Capture empty light curve
+    assert len(lc)==0, ("Sorry, it seems like your obj_id query was wrong!")
     
     lsst_bands = list('ugrizy') # lsst photomeric bands
     
@@ -143,10 +122,22 @@ def generate_lc(obj_id, band='all', data_table=data, det=1):
      
 
 def fetch_type(lid, table=toi_table):
+    """Fetch the classification type of transient given light curve table and original head TOI table."""
     return table[table['obj_id']==lid]
 
 
 def fetch_meta_info(lc_id, lc_type):
+    """Fetch metadata for transient type.
+    
+    Input
+    -----
+    lc_id: Light curve ID 
+    lc_type: classification type (i.e rrl, eb)
+
+    Output
+    ------
+    meta_<type>_table: Table that contains metadata (i.e period and other physical properties)
+    """
     if lc_type=='rrl':
         # crossmatch to approprirate table
         xm_ = np.where(meta_theta_RRL['object_id']==lc_id)
@@ -155,10 +146,6 @@ def fetch_meta_info(lc_id, lc_type):
         # crossmatch to approprirate table
         xm_ = np.where(meta_theta_EB['object_id']==lc_id)
         return meta_theta_EB[xm_]
-    elif lc_type=='agn':
-        # crossmatch to approprirate table
-        xm_ = np.where(meta_theta_AGN['object_id']==lc_id)
-        return meta_theta_AGN[xm_]
 
 # Write a function that will generate N random from each class (equal)
 def draw_rand_trans(table, N=10, class_type='rrl'):
@@ -174,18 +161,32 @@ def draw_rand_trans(table, N=10, class_type='rrl'):
     
     return req_tab[rn]  
 
-def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=365):
-    """Run the mutliband LSP from gatspy. Supports fast or generalized"""
+def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=365, k_term_base=0):
+    """Run all methods of multiband gatspy Lomb-Scargle Periodogram. 
+
+        Input
+        ------
+        x, y, err, fts: phase, magnitudes/flux, error, filter list
+        fmin, fmax: minimum and maximum search period in the Lomb-Scargle
+        k (int): Number of Fourier components
+        mode (str): LSP method. Currently supports 'fast' and "general"
+        dt_cut (int): Maximum baseline time. Default is 1 year worth of photometry.
+
+        Output
+        ------
+        best_period: Best period found from the highest peak in the LSP
+        TODO: False Alarm Probability, TOP N peaks?!
+    """
     
     try:
         # Pre-processing to photometry
-        dt = x-x[0] # calculate transient duration
-        x, y, err, fts = x[dt<=365], y[dt<=365], err[dt<=365], fts[dt<=365]
-        y += -1*min(y)
-        dt = x-x[0]
+        dt = x-x[0] # calculate baseline
+        x, y, err, fts = x[dt<=dt_cut], y[dt<=dt_cut], err[dt<=dt_cut], fts[dt<=dt_cut]
+        y += -1*min(y) # TODO: PLASTICC light curves can be negative. For now normalize such that they're at least positive
+        dt = x-x[0] # evaluate baseline again!
         # Check fmax limit
         if max(dt)<fmax:
-            fmax = max(dt)-5 
+            fmax = max(dt)-3
     except:
         return np.nan
     
@@ -201,7 +202,7 @@ def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=3
     elif mode=='general':
         try:
             model = periodic.LombScargleMultiband(fit_period=True,optimizer_kwds={"quiet": True},
-                      Nterms_base=k, Nterms_band=k)
+                      Nterms_base=k_term_base, Nterms_band=k)
             model.optimizer.set(period_range=(fmin, fmax))
             model = model.fit(x, y, dy=err, filts=fts)
             return model.best_period
@@ -210,12 +211,27 @@ def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=3
         
 
 def run_single_lsp(x, y, err, fts, band='u', fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=365):
-    """Run the mutliband LSP from gatspy. Supports fast or generalized"""
+    """Run all methods of single-band gatspy Lomb-Scargle Periodogram. 
+
+        Input
+        ------
+        x, y, err, fts: phase, magnitudes/flux, error, filter list
+        band (str): Photometric band you want to run LSP. Currently supports 'ugrizy'.
+        fmin, fmax: minimum and maximum search period in the Lomb-Scargle
+        k (int): Number of Fourier components
+        mode (str): LSP method. Currently supports 'fast' and "general"
+        dt_cut (int): Maximum baseline time. Default is 1 year worth of photometry.
+
+        Output
+        ------
+        best_period: Best period found from the highest peak in the LSP
+        TODO: False Alarm Probability, TOP N peaks?!
+    """
     
     try:
         # Pre-processing to photometry
         dt = x-x[0] # calculate transient duration
-        x, y, err, fts = x[dt<=365], y[dt<=365], err[dt<=365], fts[dt<=365]
+        x, y, err, fts = x[dt<=dt_cut], y[dt<=dt_cut], err[dt<=dt_cut], fts[dt<=dt_cut]
         y += -1*min(y)
         dt = x-x[0] # updated dt
         
@@ -271,8 +287,8 @@ def generate_tags(kmax):
     
     return master_names
 
-def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, fmin=0.1, fmax=150, table=toi_table):
-    """DOCS
+def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1, fmax=150, table=toi_table):
+    """
     
     Will return a master table (ascii.Table) of both General & Fast LSP (single & multi)
     
@@ -308,8 +324,8 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, fmin=0.1, fmax=150, tab
         
         for j in range(k_max_comp):
             # multi-LSP
-            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast', fmin=fmin, fmax=fmax)
-            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general', fmin=fmin, fmax=fmax)
+            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast', fmin=fmin, fmax=fmax, k_term_base=base_terms)
+            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general', fmin=fmin, fmax=fmax, k_term_base=base_terms)
             
             for ii, flt_lst in enumerate(list('ugrizy')):
                 # Single-band lsp per band
@@ -336,7 +352,6 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, fmin=0.1, fmax=150, tab
         
     master_names = generate_tags(k_max_comp) # generate names for table  
     Table_master = Table(names=master_names)
-    #master_names = np.concatenate([['id'], ['ndet'], ['ptrue'], m_lsp_name_fast_list, m_lsp_name_gen_list, s_lsp_gen_list, s_lsp_fast_list])
 
     for i in range(N):
         # Collapse multi matrix
@@ -355,20 +370,19 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, fmin=0.1, fmax=150, tab
         
         master_var_col = np.concatenate([[_id_unq[i]], [ndet[i]], [ptrue[i]], 
                                         M_LSP_F, M_LSP_G,
-                                    g     S_LSP_U, S_LSP_G, S_LSP_R, S_LSP_I, S_LSP_Z, S_LSP_Y,
+                                        S_LSP_U, S_LSP_G, S_LSP_R, S_LSP_I, S_LSP_Z, S_LSP_Y,
                                         S_LSP_fast])
         
         Table_master.add_row(master_var_col)
         
-    
     
     # Store table!
     Table_master.write(f"../data/{transient_class}_master_N{N}", format='ascii')
     return Table_master
             
 
-def main(Ninj, clf_type, Kmax, Pmin, Pmax, baseline_dur=365):
-    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, fmin=Pmin, fmax=Pmax, dur=baseline_dur)
+def main(Ninj, clf_type, Kmax, baseK, Pmin, Pmax, baseline_dur=365):
+    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, base_terms=baseK, fmin=Pmin, fmax=Pmax, dur=baseline_dur)
 
 if __name__ == "__main__":
-    main(args.NumberInjected, args.classType, args.MaximumFourierComponents, args.MinSearchPeriod, args.MaxSearchPeriod, args.duration)
+    main(args.NumberInjected, args.classType, args.MaximumFourierComponents, args.FreqTermsBaseAll, args.MinSearchPeriod, args.MaxSearchPeriod, args.duration)
