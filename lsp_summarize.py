@@ -73,7 +73,6 @@ def generate_toi_table(data, meta_info, meta_theta_EB, meta_theta_RRL):
     return toi_table
 
 
-
 # Read ALL PlastiCC data & meta
 data = pd.read_csv(data_path + "plasticc_train_lightcurves.csv.gz",
                   compression='gzip',
@@ -103,12 +102,13 @@ def generate_lc(obj_id, band='all', data_table=data, det=1):
     # Select light curve based on the ID 
     lc = data_table_mod[data_table_mod['object_id']==obj_id]
     
-    # Capture empty light curve
-    assert len(lc)==0, ("Sorry, it seems like your obj_id query was wrong!")
-    
     lsst_bands = list('ugrizy') # lsst photomeric bands
     
     lc_array = lc.to_numpy()
+
+    # Capture empty light curve
+    assert len(lc_array[:,1])>0, ("Sorry, it seems like your obj_id query was wrong!")
+
     mjd, flux, flux_err = lc_array[:,1], lc_array[:,3], lc_array[:,4]
     flt = lc_array[:,2].astype(int).astype(str)    
     
