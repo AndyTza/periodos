@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from astropy.table import Table
 from gatspy import datasets, periodic
 import scipy.stats as sci_stat
+global data_path, utc_tag
+
 data_path = '../data/plasticc/data/'
 
 # Caution, be careful when ignoring warnings!
@@ -26,7 +28,6 @@ import datetime
 utc = datetime.datetime.utcnow()
 utc_tag = f"{utc.year}_{utc.month}_{utc.day}_{utc.second}"
 
-global data_path, utc_tag
 
 parser = argparse.ArgumentParser(description="LSP Summarize Arguments")
 parser.add_argument('-N', '--NumberInjected', type=str, help='Number of injected light curves (int)')
