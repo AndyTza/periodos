@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 from astropy.table import Table
 from gatspy import datasets, periodic
 import scipy.stats as sci_stat
-global data_path
 data_path = '../data/plasticc/data/'
 
 # Caution, be careful when ignoring warnings!
@@ -23,6 +22,11 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 import argparse
+import datetime
+utc = datetime.datetime.utcnow()
+utc_tag = f"{utc.year}_{utc.month}_{utc.day}_{utc.second}"
+
+global data_path, utc_tag
 
 parser = argparse.ArgumentParser(description="LSP Summarize Arguments")
 parser.add_argument('-N', '--NumberInjected', type=str, help='Number of injected light curves (int)')
@@ -383,9 +387,8 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
 
         Table_master.add_row(master_var_col)
 
-
-    # Store table!
-    Table_master.write(f"../data/{transient_class}_master_N{N}", format='ascii')
+    # Store table with latest date
+    Table_master.write(f"../data/{transient_class}_master_N{N}_{utc_tag}", format='ascii')
     return Table_master
 
 
