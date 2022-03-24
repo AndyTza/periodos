@@ -14,7 +14,8 @@ Flags:
 `-fmin`: Minimum search period 
 `-fmax`: Maximum search period (if fmax>dt; fmax will be set at fmax=max(dt)-5)
 `-dur`: Maximum baseline of data will be restricted to `dur` days
+`-dets`: Detection type (default is 'all' that include both detections & non-detections)
 
 ```python
-./lsp_summarize.py -N 100 -class rrl -kmax 7 -fmin 0.1 -fmax 150 -dur 365
+./lsp_summarize.py -N 100 -class rrl -kmax 7 -fmin 0.1 -fmax 150 -dur 365 -dets all
 ```
