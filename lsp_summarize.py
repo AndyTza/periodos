@@ -14,7 +14,7 @@ from gatspy import datasets, periodic
 import scipy.stats as sci_stat
 global data_path, utc_tag
 
-data_path = '../data/plasticc/data/'
+data_path = 'data/plasticc/data/'
 
 # Caution, be careful when ignoring warnings!
 import sys
@@ -30,13 +30,13 @@ utc_tag = f"{utc.year}_{utc.month}_{utc.day}_{utc.second}"
 
 
 parser = argparse.ArgumentParser(description="LSP Summarize Arguments")
-parser.add_argument('-N', '--NumberInjected', type=str, help='Number of injected light curves (int)')
+parser.add_argument('-N', '--NumberInjected', type=int, help='Number of injected light curves (int)')
 parser.add_argument('-class', '--classType', type=str, help='Class type. Currently supports rrl, eb, agn, tde')
-parser.add_argument('-kmax', '--MaximumFourierComponents', type=str, help='Maximum number of fourier components (>1)')
-parser.add_argument('-k_term_base', '--FreqTermsBaseAll', type=str, help='Number of frequency terms to use for the base model common to all bands')
-parser.add_argument('-fmin', '--MinSearchPeriod', type=str, help='Minimum search period')
-parser.add_argument('-fmax', '--MaxSearchPeriod', type=str, help='Maximum search period')
-parser.add_argument('-dur', '--duration', type=str, help='Baseline duration (default 365 days)')
+parser.add_argument('-kmax', '--MaximumFourierComponents', type=int, help='Maximum number of fourier components (>1)')
+parser.add_argument('-k_term_base', '--FreqTermsBaseAll', type=int, help='Number of frequency terms to use for the base model common to all bands')
+parser.add_argument('-fmin', '--MinSearchPeriod', type=float, help='Minimum search period')
+parser.add_argument('-fmax', '--MaxSearchPeriod', type=float, help='Maximum search period')
+parser.add_argument('-dur', '--duration', type=int, help='Baseline duration (default 365 days)')
 parser.add_argument('-dets', '--detection', type=str, help='Detection type (default all)')
 
 args = parser.parse_args()
@@ -161,7 +161,7 @@ def fetch_meta_info(lc_id, lc_type):
         return meta_theta_EB[xm_]
 
 # Write a function that will generate N random from each class (equal)
-def draw_rand_trans(table, N=10, class_type='rrl'):
+def draw_rand_trans(table, N, class_type='rrl'):
     """Given N this function will draw an equal number of trnasinets.
        Note: It will not draw the same transiennt
     """
@@ -300,7 +300,7 @@ def generate_tags(kmax):
 
     return master_names
 
-def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1, fmax=150, table=toi_table, det_type='all'):
+def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1, fmax=150, table=toi_table, dur=365, det_type='all'):
     """
 
     Will return a master table (ascii.Table) of both General & Fast LSP (single & multi)
@@ -321,6 +321,7 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
     toi_special = draw_rand_trans(table,
                                   N=N,
                                   class_type=transient_class)
+                                  
     _id_unq = toi_special['obj_id'].data # all the ID's of the unique class
     ndet = np.zeros(shape=N)
     ptrue = np.zeros(shape=N)
@@ -337,12 +338,12 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
 
         for j in range(k_max_comp):
             # multi-LSP
-            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast', fmin=fmin, fmax=fmax, k_term_base=base_terms)
-            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general', fmin=fmin, fmax=fmax, k_term_base=base_terms)
+            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast', fmin=fmin, fmax=fmax, k_term_base=base_terms, dt_cut=dur)
+            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general', fmin=fmin, fmax=fmax, k_term_base=base_terms, dt_cut=dur)
 
             for ii, flt_lst in enumerate(list('ugrizy')):
                 # Single-band lsp per band
-                X_g_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, k=j, mode='general', fmin=fmin, fmax=fmax) # general
+                X_g_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, k=j, mode='general', fmin=fmin, fmax=fmax, dt_cut=dur) # general
                 M_single_general[i, j, ii] = X_g_lsp # append data
 
             M_multi_fast[i, j]=m_f_lsp
@@ -350,7 +351,7 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
 
         # fast single_lsp
         for ii, flt_lst in enumerate(list('ugrizy')):
-            X_f_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, mode='fast', fmin=fmin, fmax=fmax) # general
+            X_f_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, mode='fast', fmin=fmin, fmax=fmax, dt_cut=dur) # general
             M_single_fast[i, ii] = X_f_lsp
 
         if transient_class=='rrl' or transient_class=='eb':
@@ -389,12 +390,12 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
         Table_master.add_row(master_var_col)
 
     # Store table with latest date
-    Table_master.write(f"../data/{transient_class}_master_N{N}_{utc_tag}", format='ascii')
+    Table_master.write(f"data/{transient_class}_master_N{N}_{utc_tag}", format='ascii')
     return Table_master
 
 
 def main(Ninj, clf_type, Kmax, baseK, Pmin, Pmax, baseline_dur=365, det_type='all'):
-    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, base_terms=baseK, fmin=Pmin, fmax=Pmax, dur=baseline_dur, det_type=det_type)
+    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, base_terms=baseK, fmin=Pmin, fmax=Pmax, dur=baseline_dur, det_type=det_type, table=toi_table)
 
 if __name__ == "__main__":
     main(args.NumberInjected, args.classType, args.MaximumFourierComponents, args.FreqTermsBaseAll, args.MinSearchPeriod, args.MaxSearchPeriod, args.duration, args.detection)
