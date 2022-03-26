@@ -299,7 +299,7 @@ def generate_tags(kmax):
 
     return master_names
 
-def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1, fmax=150, table=toi_table, dur=365, det_type='all'):
+def calc_all_lsp(N, transient_class='rrl', fmin=0.1, fmax=150, table=toi_table, dur=365, det_type='all', k=1, m=1):
     """
 
     Will return a master table (ascii.Table) of both General & Fast LSP (single & multi)
@@ -337,12 +337,12 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
 
         for j in range(k_max_comp):
             # multi-LSP
-            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='fast', fmin=fmin, fmax=fmax, k_term_base=base_terms, dt_cut=dur)
-            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, k=j, mode='general', fmin=fmin, fmax=fmax, k_term_base=base_terms, dt_cut=dur)
+            m_f_lsp = run_multi_lsp(t, mag, mag_err, flt, mode='fast', fmin=fmin, fmax=fmax, dt_cut=dur, k_band=k,  m_base=m)
+            m_g_lsp = run_multi_lsp(t, mag, mag_err, flt, mode='general', fmin=fmin, fmax=fmax, dt_cut=dur, k_band=k,  m_base=m)
 
             for ii, flt_lst in enumerate(list('ugrizy')):
                 # Single-band lsp per band
-                X_g_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, k=j, mode='general', fmin=fmin, fmax=fmax, dt_cut=dur) # general
+                X_g_lsp = run_single_lsp(t, mag, mag_err, flt, band=flt_lst, k_band=j, mode='general', fmin=fmin, fmax=fmax, dt_cut=dur) # general
                 M_single_general[i, j, ii] = X_g_lsp # append data
 
             M_multi_fast[i, j]=m_f_lsp
@@ -394,7 +394,7 @@ def calc_all_lsp(N, transient_class='rrl', k_max_comp=7, base_terms=1, fmin=0.1,
 
 
 def main(Ninj, clf_type, Kmax, baseK, Pmin, Pmax, baseline_dur=365, det_type='all'):
-    calc_all_lsp(Ninj, transient_class=clf_type, k_max_comp=Kmax, base_terms=baseK, fmin=Pmin, fmax=Pmax, dur=baseline_dur, det_type=det_type, table=toi_table)
+    calc_all_lsp(Ninj, transient_class=clf_type, k=Kmax, m=baseK, fmin=Pmin, fmax=Pmax, dur=baseline_dur, det_type=det_type, table=toi_table)
 
 if __name__ == "__main__":
     main(args.NumberInjected, args.classType, args.MaximumFourierComponents, args.FreqTermsBaseAll, args.MinSearchPeriod, args.MaxSearchPeriod, args.duration, args.detection)
