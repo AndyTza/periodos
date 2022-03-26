@@ -174,7 +174,7 @@ def draw_rand_trans(table, N, class_type='rrl'):
 
     return req_tab[rn]
 
-def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=365, k_term_base=0):
+def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k_band=1, m_base=1, mode='fast', dt_cut=365, k_term_base=0):
     """Run all methods of multiband gatspy Lomb-Scargle Periodogram.
 
         Input
@@ -215,7 +215,7 @@ def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=3
     elif mode=='general':
         try:
             model = periodic.LombScargleMultiband(fit_period=True,optimizer_kwds={"quiet": True},
-                      Nterms_base=k_term_base, Nterms_band=k)
+                      Nterms_base=m_base, Nterms_band=k_band)
             model.optimizer.set(period_range=(fmin, fmax))
             model = model.fit(x, y, dy=err, filts=fts)
             return model.best_period
@@ -223,7 +223,7 @@ def run_multi_lsp(x, y, err, fts, fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=3
             return np.nan
 
 
-def run_single_lsp(x, y, err, fts, band='u', fmin=0.1, fmax=150, k=1, mode='fast', dt_cut=365):
+def run_single_lsp(x, y, err, fts, band='u', fmin=0.1, fmax=150, k_band=1, mode='fast', dt_cut=365):
     """Run all methods of single-band gatspy Lomb-Scargle Periodogram.
 
         Input
@@ -269,8 +269,7 @@ def run_single_lsp(x, y, err, fts, band='u', fmin=0.1, fmax=150, k=1, mode='fast
             return np.nan
     elif mode=='general':
         try:
-            model = periodic.LombScargleMultiband(fit_period=True,optimizer_kwds={"quiet": True},
-                      Nterms_base=k)
+            model = periodic.LombScargle(fit_period=True,optimizer_kwds={"quiet": True}, Nterms=k_band)
             model.optimizer.set(period_range=(fmin, fmax))
             model = model.fit(x, y, dy=err)
             return model.best_period
